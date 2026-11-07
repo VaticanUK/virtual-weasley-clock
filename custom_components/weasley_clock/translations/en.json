@@ -1,0 +1,94 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Create a Weasley Clock",
+        "description": "Give your clock a name. You can add places and people (and fine-tune everything) afterwards from the integration's Configure button.",
+        "data": {
+          "name": "Clock name",
+          "title": "Text in the centre of the clock (optional)",
+          "initial_people": "People to show on the clock"
+        }
+      }
+    },
+    "error": {
+      "name_required": "A name is required."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure clock",
+        "description": "**Positions (clockwise from the top):** {locations}\n\n**People:** {people}\n\nChanges are applied when you choose **Save and close**.",
+        "menu_options": {
+          "add_location": "Add a position",
+          "pick_location": "Edit, move or remove a position",
+          "add_person": "Add a person",
+          "pick_person": "Edit or remove a person",
+          "settings": "Display settings",
+          "save": "Save and close"
+        }
+      },
+      "settings": {
+        "title": "Display settings",
+        "data": {
+          "title": "Text in the centre of the clock (leave blank to use the clock name)"
+        }
+      },
+      "add_location": {
+        "title": "Add a position",
+        "description": "A person's hand points here when they are in any of the selected zones, or their state matches one of the extra states.",
+        "data": {
+          "name": "Label",
+          "zones": "Zones",
+          "states": "Extra states to match (comma separated)",
+          "away": "Use when away and not in any mapped zone (e.g. Travelling)",
+          "unknown": "Use when location is unknown or unavailable (e.g. Lost)",
+          "position": "Position on the clock (1 = 12 o'clock, clockwise)"
+        }
+      },
+      "pick_location": {
+        "title": "Choose a position",
+        "data": { "target": "Position" }
+      },
+      "edit_location": {
+        "title": "Edit {name}",
+        "description": "A person's hand points here when they are in any of the selected zones, or their state matches one of the extra states.",
+        "data": {
+          "name": "Label",
+          "zones": "Zones",
+          "states": "Extra states to match (comma separated)",
+          "away": "Use when away and not in any mapped zone (e.g. Travelling)",
+          "unknown": "Use when location is unknown or unavailable (e.g. Lost)",
+          "position": "Position on the clock (1 = 12 o'clock, clockwise)",
+          "delete": "Remove this position"
+        }
+      },
+      "add_person": {
+        "title": "Add a person",
+        "data": {
+          "entity_id": "Person or device tracker",
+          "name": "Name on the hand (leave blank to use the entity name)",
+          "color": "Hand colour"
+        }
+      },
+      "pick_person": {
+        "title": "Choose a person",
+        "data": { "target": "Person" }
+      },
+      "edit_person": {
+        "title": "Edit {name}",
+        "data": {
+          "entity_id": "Person or device tracker",
+          "name": "Name on the hand (leave blank to use the entity name)",
+          "color": "Hand colour",
+          "delete": "Remove this person"
+        }
+      }
+    },
+    "error": {
+      "name_required": "A label is required.",
+      "duplicate_location": "There is already a position with that label."
+    }
+  }
+}

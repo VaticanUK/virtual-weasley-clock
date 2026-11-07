@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# Never commit real Home Assistant config or secrets
+secrets.yaml
+.storage/
+*.db

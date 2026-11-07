@@ -1,0 +1,13 @@
+{
+  "domain": "weasley_clock",
+  "name": "Weasley Clock",
+  "codeowners": ["@VaticanUK"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http", "zone"],
+  "documentation": "https://github.com/VaticanUK/virtual-weasley-clock",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/VaticanUK/virtual-weasley-clock/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
