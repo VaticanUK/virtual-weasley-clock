@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-200 -200 400 400" width="512" height="512">
+  <!-- Simplified Weasley Clock dial for Home Assistant brand images.
+       Source for custom_components/weasley_clock/brand/icon*.png -->
+  <defs>
+    <linearGradient id="brassA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff2b0"/><stop offset=".22" stop-color="#d9ac4b"/>
+      <stop offset=".5" stop-color="#8a6420"/><stop offset=".75" stop-color="#e8c564"/>
+      <stop offset="1" stop-color="#6d4c14"/>
+    </linearGradient>
+    <linearGradient id="brassB" x1="1" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#fff2b0"/><stop offset=".3" stop-color="#c79a3c"/>
+      <stop offset=".6" stop-color="#7a5717"/><stop offset="1" stop-color="#e3be5c"/>
+    </linearGradient>
+    <radialGradient id="paper" cx="45%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#fdfbf4"/><stop offset=".7" stop-color="#f3eedf"/>
+      <stop offset="1" stop-color="#e2d9c0"/>
+    </radialGradient>
+    <!-- One scissor-blade hand pointing up with its finger loop below, pivot at the origin. -->
+    <g id="hand">
+      <path d="M -11 -8 L -3 -130 Q -1 -146 1 -150 Q 9 -114 19 -56 Q 23 -24 16 -8 Z"/>
+      <path d="M -7 6 Q -16 28 -18 44 L -2 44 Q -3 28 7 6 Z"/>
+      <path fill-rule="evenodd" d="M -31 62 a 21 21 0 1 0 42 0 a 21 21 0 1 0 -42 0 Z M -23 62 a 13 13 0 1 0 26 0 a 13 13 0 1 0 -26 0 Z"/>
+    </g>
+  </defs>
+
+  <!-- Brass bezel and paper face -->
+  <circle r="198" fill="url(#brassA)"/>
+  <circle r="186" fill="url(#brassB)"/>
+  <circle r="172" fill="#5b4316"/>
+  <circle r="167" fill="url(#paper)"/>
+
+  <!-- Location dividers (8 segments) -->
+  <g stroke="#3a3328" stroke-width="3" stroke-linecap="round">
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(22.5)"/>
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(67.5)"/>
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(112.5)"/>
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(157.5)"/>
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(202.5)"/>
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(247.5)"/>
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(292.5)"/>
+    <line x1="0" y1="-62" x2="0" y2="-162" transform="rotate(337.5)"/>
+  </g>
+
+  <!-- Inner brass ring -->
+  <circle r="62" fill="url(#brassB)"/>
+  <circle r="54" fill="url(#brassA)"/>
+  <circle r="46" fill="url(#paper)"/>
+
+  <!-- Hands -->
+  <g fill="#141414">
+    <use href="#hand" transform="rotate(-50)"/>
+    <use href="#hand" transform="rotate(70) scale(.86)"/>
+    <circle r="22"/>
+  </g>
+
+  <!-- Brass hub -->
+  <circle r="15" fill="url(#brassA)"/>
+  <circle r="7.5" fill="url(#brassB)"/>
+</svg>
