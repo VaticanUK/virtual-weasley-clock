@@ -195,8 +195,8 @@ module weasley_filigree_hand(name_str, initial_str, bore_d, hand_len) {
 
 ```yaml
 esphome:
-  name: esmaes-weasley-clock
-  friendly_name: Esmae's Weasley Clock
+  name: weasley-clock
+  friendly_name: Weasley Clock
   on_boot:
     priority: 600
     then:
@@ -217,8 +217,8 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
-    ssid: "Esmae's Weasley Fallback Hotspot"
-    password: "qgZzhhBN5RQ3"
+    ssid: "Weasley Fallback Hotspot"
+    password: !secret hotspot_password
 
 captive_portal:
 

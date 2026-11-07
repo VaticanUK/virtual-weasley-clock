@@ -14,7 +14,8 @@ from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .clock import ClockRuntime
-from .const import CARD_FILENAME, CARD_URL, DOMAIN, PERSON_ID, VERSION
+from .const import CARD_FILENAME, CARD_URL, CONF_PHYSICAL, DOMAIN, PERSON_ID, PHYS_DEVICE, VERSION
+from .physical import PhysicalClock
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +46,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: WeasleyClockConfigEntry)
     )
     _async_remove_stale_entities(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    if (entry.options.get(CONF_PHYSICAL) or {}).get(PHYS_DEVICE):
+        physical = PhysicalClock(hass, entry.runtime_data)
+        physical.async_start()
+        entry.async_on_unload(physical.async_stop)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 

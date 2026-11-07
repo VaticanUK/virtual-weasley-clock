@@ -28,7 +28,21 @@ PERSON_ENTITY: Final = "entity_id"
 PERSON_NAME: Final = "name"
 PERSON_COLOR: Final = "color"
 
+PERSON_HAND: Final = "hand"  # physical hand number (1-based), 0 = none
+
 OVERRIDE_AUTO: Final = "Auto"
+
+# Optional physical clock (an ESPHome device built from "Physical Clock/esphome.yaml").
+CONF_PHYSICAL: Final = "physical"
+PHYS_DEVICE: Final = "device_id"
+PHYS_STEPS_PER_REV: Final = "steps_per_rev"
+PHYS_REVERSE: Final = "reverse"
+PHYS_PAUSED: Final = "paused"
+PHYS_OFFSETS: Final = "offsets"  # {"1": steps from home sensor to 12 o'clock, ...}
+
+# 28BYJ-48 in full-step mode (2048 steps/rev) driving a 20T pinion -> 60T gear.
+DEFAULT_STEPS_PER_REV: Final = 6144
+DEFAULT_HAND_COUNT: Final = 4
 
 # Generic default locations. Deliberately contains nothing personal; users
 # add their own places (and map them to zones) from the options flow.

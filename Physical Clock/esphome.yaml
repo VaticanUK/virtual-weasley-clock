@@ -1,0 +1,377 @@
+esphome:
+  name: weasley-clock
+  friendly_name: Weasley Clock
+  on_boot:
+    priority: 600
+    then:
+      - delay: 10s # Wait for sensors and drivers to initialize after power-on
+      - script.execute: home_all_hands
+
+esp32:
+  variant: esp32
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: Weasley Fallback Hotspot
+    password: !secret hotspot_password
+
+captive_portal:
+
+# --- TEMPORARY DIAGNOSTIC SWITCHES ---
+#switch:
+#  - platform: gpio
+#    pin: GPIO23
+#    id: test_pin_1
+#    name: "Test LED 1 (IN1)"
+#  - platform: gpio
+#    pin: GPIO22
+#    id: test_pin_2
+#    name: "Test LED 2 (IN2)"
+#  - platform: gpio
+#    pin: GPIO21
+#    id: test_pin_3
+#    name: "Test LED 3 (IN3)"
+#  - platform: gpio
+#    pin: GPIO19
+#    id: test_pin_4
+#    name: "Test LED 4 (IN4)"
+  
+# --- STEPPER MOTORS CONFIGURATION (ULN2003) ---
+stepper:
+ - platform: uln2003
+   id: hand_1_stepper
+   pin_a: GPIO18 # Connected to IN1 (D18) - 4 adjacent pins on the board!
+   pin_b: GPIO5 # Connected to IN3 (D17 - swapped in YAML)
+   pin_c: GPIO17  # Connected to IN2 (D5  - swapped in YAML)
+   pin_d: GPIO16 # Connected to IN4 (D16)
+   max_speed: 600 steps/s
+   sleep_when_done: true
+
+ - platform: uln2003
+   id: hand_2_stepper
+   pin_a: GPIO23
+   pin_b: GPIO22
+   pin_c: GPIO21
+   pin_d: GPIO19
+   max_speed: 600 steps/s
+   sleep_when_done: true
+
+ - platform: uln2003
+   id: hand_3_stepper
+   pin_a: GPIO13 # Connected to IN1 (D13)
+   pin_b: GPIO12 # Connected to IN3 (D14 - swapped in YAML)
+   pin_c: GPIO14 # Connected to IN2 (D12 - swapped in YAML)
+   pin_d: GPIO27 # Connected to IN4 (D27)
+   max_speed: 600 steps/s
+   sleep_when_done: true
+
+ - platform: uln2003
+   id: hand_4_stepper
+   pin_a: GPIO4  # Connected to IN1 (D4)
+   pin_b: GPIO2 # Connected to IN3 (D15 - swapped in YAML)
+   pin_c: GPIO15  # Connected to IN2 (D2  - swapped in YAML)
+   pin_d: GPIO26 # Connected to IN4 (D26)
+   max_speed: 600 steps/s
+   sleep_when_done: true
+
+#--- HOMING SCRIPTS ---
+script:
+  - id: home_all_hands
+    mode: queued
+    then:
+      - logger.log: "Starting Weasley Clock Homing Routine..."
+      # Move all 4 steppers forward by 7,000 steps (slightly more than 1 full 6,144 step rotation)
+      - script.execute: home_motor_1
+      - script.execute: home_motor_2
+      - script.execute: home_motor_3
+      - script.execute: home_motor_4
+
+  - id: home_motor_1
+    mode: parallel
+    then:
+      - logger.log: "Homing hand 1..."
+      - stepper.set_speed:
+          id: hand_1_stepper
+          speed: 150 steps/s
+      - stepper.set_target:
+          id: hand_1_stepper
+          target: !lambda "return id(hand_1_stepper).current_position + 7000;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_1
+      - stepper.set_target:
+          id: hand_1_stepper
+          target: !lambda "return id(hand_1_stepper).current_position;"
+      - lambda: "id(hand_1_stepper).current_position = 0;"
+      - number.set:
+          id: hand_1_pos
+          value: 0
+      - logger.log: "Hand 1 homed successfully!"
+      - stepper.set_speed:
+          id: hand_1_stepper
+          speed: 600 steps/s
+        
+  - id: home_motor_2
+    mode: parallel
+    then:
+      - logger.log: "Homing hand 2..."
+      - stepper.set_speed:
+          id: hand_2_stepper
+          speed: 150 steps/s
+      - stepper.set_target:
+          id: hand_2_stepper
+          target: !lambda "return id(hand_2_stepper).current_position + 7000;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_2
+      - stepper.set_target:
+          id: hand_2_stepper
+          target: !lambda "return id(hand_2_stepper).current_position;"
+      - lambda: "id(hand_2_stepper).current_position = 0;"
+      - number.set:
+          id: hand_2_pos
+          value: 0
+      - logger.log: "Hand 2 homed successfully!"
+      - stepper.set_speed:
+          id: hand_2_stepper
+          speed: 600 steps/s
+
+  - id: home_motor_3
+    mode: parallel
+    then:
+      - logger.log: "Homing hand 3..."
+      - stepper.set_speed:
+          id: hand_3_stepper
+          speed: 150 steps/s
+      - stepper.set_target:
+          id: hand_3_stepper
+          target: !lambda "return id(hand_3_stepper).current_position + 7000;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_3
+      - stepper.set_target:
+          id: hand_3_stepper
+          target: !lambda "return id(hand_3_stepper).current_position;"
+      - lambda: "id(hand_3_stepper).current_position = 0;"
+      - number.set:
+          id: hand_3_pos
+          value: 0
+      - logger.log: "Hand 3 homed successfully!"
+      - stepper.set_speed:
+          id: hand_3_stepper
+          speed: 600 steps/s
+
+  - id: home_motor_4
+    mode: parallel
+    then:
+      - logger.log: "Homing hand 4..."
+      - stepper.set_speed:
+          id: hand_4_stepper
+          speed: 150 steps/s
+      - stepper.set_target:
+          id: hand_4_stepper
+          target: !lambda "return id(hand_4_stepper).current_position + 7000;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_4
+      - stepper.set_target:
+          id: hand_4_stepper
+          target: !lambda "return id(hand_4_stepper).current_position;"
+      - lambda: "id(hand_4_stepper).current_position = 0;"
+      - number.set:
+          id: hand_4_pos
+          value: 0
+      - logger.log: "Hand 4 homed successfully!"
+      - stepper.set_speed:
+          id: hand_4_stepper
+          speed: 600 steps/s
+          
+# --- HOMING / POSITION SENSORS (HALL EFFECT) ---
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO34
+      inverted: true
+    id: home_sensor_2
+    name: Home Sensor 2
+    icon: "mdi:clock-in"
+#    internal: true
+#    on_press:
+#      then:
+#        - logger.log: "Hand 1 home position found"
+#        - stepper.report_position:
+#            id: hand_1_stepper
+#            position: 0
+#        - stepper.set_target:
+#            id: hand_1_stepper
+#            target: 0
+
+  - platform: gpio
+    pin:
+      number: GPIO35
+      inverted: true
+    id: home_sensor_3
+    name: Home Sensor 3
+    icon: "mdi:clock-in"
+    internal: true
+    on_press:
+      then:
+        - logger.log: "Hand 3 home position found"
+        - stepper.report_position:
+            id: hand_3_stepper
+            position: 0
+        - stepper.set_target:
+            id: hand_3_stepper
+            target: 0
+
+  - platform: gpio
+    pin:
+      number: GPIO32
+      inverted: true
+      mode: INPUT_PULLUP
+    id: home_sensor_1
+    name: Home Sensor 1
+    icon: "mdi:clock-in"
+    internal: true
+    on_press:
+      then:
+        - logger.log: "Hand 1 home position found"
+        - stepper.report_position:
+            id: hand_1_stepper
+            position: 0
+        - stepper.set_target:
+            id: hand_1_stepper
+            target: 0
+
+  - platform: gpio
+    pin:
+      number: GPIO33
+      inverted: true
+      mode: INPUT_PULLUP
+    id: home_sensor_4
+    name: Home Sensor 4
+    icon: "mdi:clock-in"
+#    internal: true
+#    on_press:
+#      then:
+#        - logger.log: "Hand 4 home position found"
+#        - stepper.report_position:
+#            id: hand_4_stepper
+#            position: 0
+#        - stepper.set_target:
+#            id: hand_4_stepper
+#            target: 0
+
+# --- HOME ASSISTANT BUTTONS ---
+button:
+  - platform: template
+    name: "Home All Clock Hands"
+    id: button_home_clock
+    icon: "mdi:home-clock-outline"
+    on_press:
+      then:
+        - script.execute: home_all_hands
+  
+  - platform: template
+    name: "Home Motor 1"
+    on_press:
+      then:
+          - script.execute: home_motor_1
+
+  - platform: template
+    name: "Home Motor 2"
+    on_press:
+      then:
+          - script.execute: home_motor_2
+
+  - platform: template
+    name: "Home Motor 3"
+    on_press:
+      then:
+          - script.execute: home_motor_3
+
+  - platform: template
+    name: "Home Motor 4"
+    on_press:
+      then:
+          - script.execute: home_motor_4
+            
+# --- HOME ASSISTANT INTERFACE CONTROLS ---
+number:
+  - platform: template
+    name: "Hand 1 Position (Steps)"
+    id: hand_1_pos
+    min_value: -30720
+    max_value: 30720
+    step: 1
+    optimistic: true
+    set_action:
+      then:
+        - logger.log:
+            format: "Moving hand 1 to %.0f steps"
+            args: [x]
+        - stepper.set_target:
+            id: hand_1_stepper
+            target: !lambda 'return x;'
+    icon: "mdi:clock-in"
+     
+  - platform: template
+    name: "Hand 2 Position (Steps)"
+    id: hand_2_pos
+    min_value: -30720
+    max_value: 30720
+    step: 1
+    optimistic: true
+    set_action:
+      then:
+        - logger.log:
+            format: "Moving hand 2 to %.0f steps"
+            args: [x]
+        - stepper.set_target:
+            id: hand_2_stepper
+            target: !lambda 'return x;'
+    icon: "mdi:clock-in"
+
+  - platform: template
+    name: "Hand 3 Position (Steps)"
+    id: hand_3_pos
+    min_value: -30720
+    max_value: 30720
+    step: 1
+    optimistic: true
+    set_action:
+      then:
+        - logger.log:
+            format: "Moving hand 3 to %.0f steps"
+            args: [x]
+        - stepper.set_target:
+            id: hand_3_stepper
+            target: !lambda 'return x;'
+    icon: "mdi:clock-in"
+
+  - platform: template
+    name: "Hand 4 Position (Steps)"
+    id: hand_4_pos
+    min_value: -30720
+    max_value: 30720
+    step: 1
+    optimistic: true
+    set_action:
+      then:
+        - logger.log:
+            format: "Moving hand 4 to %.0f steps"
+            args: [x]
+        - stepper.set_target:
+            id: hand_4_stepper
+            target: !lambda 'return x;'
+    icon: "mdi:clock-in"

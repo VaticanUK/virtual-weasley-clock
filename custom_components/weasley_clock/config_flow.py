@@ -15,10 +15,19 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_LOCATIONS,
     CONF_PEOPLE,
+    CONF_PHYSICAL,
     CONF_TITLE,
     DEFAULT_COLORS,
+    DEFAULT_HAND_COUNT,
     DEFAULT_LOCATIONS,
+    DEFAULT_STEPS_PER_REV,
     DOMAIN,
+    PERSON_HAND,
+    PHYS_DEVICE,
+    PHYS_OFFSETS,
+    PHYS_PAUSED,
+    PHYS_REVERSE,
+    PHYS_STEPS_PER_REV,
     LOC_AWAY,
     LOC_ID,
     LOC_NAME,
@@ -30,6 +39,7 @@ from .const import (
     PERSON_ID,
     PERSON_NAME,
 )
+from .physical import async_find_hand_numbers
 
 CONF_NAME = "name"
 CONF_INITIAL_PEOPLE = "initial_people"
@@ -145,7 +155,7 @@ class WeasleyClockOptionsFlow(OptionsFlow):
         menu.append("add_person")
         if self.opts[CONF_PEOPLE]:
             menu.append("pick_person")
-        menu += ["settings", "save"]
+        menu += ["settings", "physical", "save"]
         locs = ", ".join(l[LOC_NAME] for l in self.opts[CONF_LOCATIONS]) or "-"
         people = ", ".join(p[PERSON_NAME] for p in self.opts[CONF_PEOPLE]) or "-"
         return self.async_show_menu(
@@ -168,6 +178,59 @@ class WeasleyClockOptionsFlow(OptionsFlow):
                 {vol.Optional(CONF_TITLE, default=self.opts.get(CONF_TITLE, "")): str}
             ),
         )
+
+    # ------------------------------------------------------- physical clock
+    @property
+    def physical(self) -> dict[str, Any]:
+        return self.opts.get(CONF_PHYSICAL) or {}
+
+    def _hand_count(self, device_id: str | None = None) -> int:
+        device_id = device_id if device_id is not None else self.physical.get(PHYS_DEVICE)
+        hands = async_find_hand_numbers(self.hass, device_id) if device_id else {}
+        return max(hands, default=DEFAULT_HAND_COUNT)
+
+    async def async_step_physical(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        phys = self.physical
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            device_id = user_input.get(PHYS_DEVICE) or ""
+            if device_id and not async_find_hand_numbers(self.hass, device_id):
+                errors[PHYS_DEVICE] = "not_a_clock"
+            else:
+                self.opts[CONF_PHYSICAL] = {
+                    PHYS_DEVICE: device_id,
+                    PHYS_STEPS_PER_REV: int(user_input[PHYS_STEPS_PER_REV]),
+                    PHYS_REVERSE: bool(user_input.get(PHYS_REVERSE)),
+                    PHYS_PAUSED: bool(user_input.get(PHYS_PAUSED)),
+                    PHYS_OFFSETS: {
+                        key.split("_")[1]: int(value)
+                        for key, value in user_input.items()
+                        if key.startswith("hand_") and key.endswith("_offset")
+                    },
+                }
+                return await self.async_step_init()
+
+        offsets = phys.get(PHYS_OFFSETS) or {}
+        steps = phys.get(PHYS_STEPS_PER_REV) or DEFAULT_STEPS_PER_REV
+        fields: dict[Any, Any] = {
+            vol.Optional(PHYS_DEVICE, description={"suggested_value": phys.get(PHYS_DEVICE) or None}): (
+                selector.DeviceSelector(selector.DeviceSelectorConfig(integration="esphome"))
+            ),
+            vol.Required(PHYS_STEPS_PER_REV, default=steps): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=1, max=100000, step=1, mode=selector.NumberSelectorMode.BOX)
+            ),
+            vol.Optional(PHYS_REVERSE, default=bool(phys.get(PHYS_REVERSE))): bool,
+            vol.Optional(PHYS_PAUSED, default=bool(phys.get(PHYS_PAUSED))): bool,
+        }
+        for hand in range(1, self._hand_count() + 1):
+            fields[vol.Required(f"hand_{hand}_offset", default=int(offsets.get(str(hand), 0)))] = (
+                selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-steps, max=steps, step=1, mode=selector.NumberSelectorMode.BOX
+                    )
+                )
+            )
+        return self.async_show_form(step_id="physical", data_schema=vol.Schema(fields), errors=errors)
 
     # ------------------------------------------------------------ locations
     def _location_schema(self, loc: dict[str, Any] | None, is_new: bool) -> vol.Schema:
@@ -278,6 +341,14 @@ class WeasleyClockOptionsFlow(OptionsFlow):
         fields[vol.Optional(PERSON_NAME, default=person.get(PERSON_NAME, ""))] = str
         color = person.get(PERSON_COLOR) or DEFAULT_COLORS[len(self.opts[CONF_PEOPLE]) % len(DEFAULT_COLORS)]
         fields[vol.Required(PERSON_COLOR, default=_hex_to_rgb(color))] = selector.ColorRGBSelector()
+        if self.physical.get(PHYS_DEVICE):
+            hand_options = [selector.SelectOptionDict(value="0", label="None")] + [
+                selector.SelectOptionDict(value=str(h), label=f"Hand {h}")
+                for h in range(1, self._hand_count() + 1)
+            ]
+            fields[vol.Optional(PERSON_HAND, default=str(person.get(PERSON_HAND) or 0))] = selector.SelectSelector(
+                selector.SelectSelectorConfig(options=hand_options, mode=selector.SelectSelectorMode.DROPDOWN)
+            )
         if not is_new:
             fields[vol.Optional(CONF_DELETE, default=False)] = bool
         return vol.Schema(fields)
@@ -288,17 +359,32 @@ class WeasleyClockOptionsFlow(OptionsFlow):
         built[PERSON_ID] = person_id
         built[PERSON_COLOR] = _rgb_to_hex(user_input.get(PERSON_COLOR, [139, 26, 26]))
         people = self.opts[CONF_PEOPLE]
+        existing = next((p for p in people if p[PERSON_ID] == person_id), {})
+        built[PERSON_HAND] = int(user_input.get(PERSON_HAND, existing.get(PERSON_HAND) or 0))
         for i, p in enumerate(people):
             if p[PERSON_ID] == person_id:
                 people[i] = built
                 return
         people.append(built)
 
+    def _validate_person(self, user_input: dict[str, Any], person_id: str | None) -> dict[str, str]:
+        hand = int(user_input.get(PERSON_HAND) or 0)
+        if hand and any(
+            int(p.get(PERSON_HAND) or 0) == hand and p[PERSON_ID] != person_id for p in self.opts[CONF_PEOPLE]
+        ):
+            return {PERSON_HAND: "hand_taken"}
+        return {}
+
     async def async_step_add_person(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._store_person(user_input, _new_id())
-            return await self.async_step_init()
-        return self.async_show_form(step_id="add_person", data_schema=self._person_schema(None, True))
+            errors = self._validate_person(user_input, None)
+            if not errors:
+                self._store_person(user_input, _new_id())
+                return await self.async_step_init()
+        return self.async_show_form(
+            step_id="add_person", data_schema=self._person_schema(None, True), errors=errors
+        )
 
     async def async_step_pick_person(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
@@ -318,14 +404,18 @@ class WeasleyClockOptionsFlow(OptionsFlow):
         person = next((p for p in self.opts[CONF_PEOPLE] if p[PERSON_ID] == self._editing), None)
         if person is None:
             return await self.async_step_init()
+        errors: dict[str, str] = {}
         if user_input is not None:
             if user_input.get(CONF_DELETE):
                 self.opts[CONF_PEOPLE] = [p for p in self.opts[CONF_PEOPLE] if p[PERSON_ID] != person[PERSON_ID]]
-            else:
+                return await self.async_step_init()
+            errors = self._validate_person(user_input, person[PERSON_ID])
+            if not errors:
                 self._store_person(user_input, person[PERSON_ID])
-            return await self.async_step_init()
+                return await self.async_step_init()
         return self.async_show_form(
             step_id="edit_person",
             data_schema=self._person_schema(person, False),
+            errors=errors,
             description_placeholders={"name": person[PERSON_NAME]},
         )

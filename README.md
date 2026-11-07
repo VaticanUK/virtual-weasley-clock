@@ -73,6 +73,31 @@ entities:              # optional explicit list instead of auto-discovery
 Click a hand or a legend chip to open that person's details.
 The card loads the *Pirata One* and *IM Fell English* fonts from Google Fonts. If they aren't available, it falls back to local serif fonts.
 
+## Physical clock (optional)
+
+The clock can also drive a real one: an ESP32 with stepper-motor hands built from the files in [`Physical Clock/`](Physical%20Clock/).
+Its hands follow the virtual clock's hands.
+
+1. Flash the ESPHome firmware and add the device to Home Assistant through the ESPHome integration.
+   The integration looks for its `Hand N Position (Steps)` number entities.
+2. Open **Configure → Physical clock** and choose the device. Leave the device empty to turn the physical clock off again.
+3. Open **Configure → Edit or remove a person** and choose a **Hand on the physical clock** for each person.
+4. Calibrate it (see below), then **Save and close**.
+
+Positions are spaced evenly round the dial, clockwise from 12 o'clock, the same as on the card. Make your printed dial match your list of positions.
+Each hand takes the shortest way to its new position.
+When the device homes on boot, it resets its hands to 0; the integration notices and sends them back to the right positions.
+
+**Calibrating:** each hand's home (Hall sensor) position is probably not exactly at position 1, so each hand has an offset.
+
+1. In **Physical clock**, tick **Pause** and save.
+2. Press **Home All Clock Hands** on the ESPHome device.
+3. For each hand, change **Hand N Position (Steps)** on the device until the hand points at the middle of position 1, and note the number.
+4. Back in **Physical clock**, enter those numbers as the offsets, untick **Pause**, and save.
+
+If the hands turn the wrong way, tick **Positive steps turn the hands anticlockwise**.
+**Steps for one full turn of a hand** defaults to 6144: the 28BYJ-48 makes 2048 full steps per turn, and the 20-tooth to 60-tooth gears turn the hand once for every 3 motor turns.
+
 ## Automation ideas
 
 ```yaml

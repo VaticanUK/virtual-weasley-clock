@@ -26,7 +26,26 @@
           "add_person": "Add a person",
           "pick_person": "Edit or remove a person",
           "settings": "Display settings",
+          "physical": "Physical clock",
           "save": "Save and close"
+        }
+      },
+      "physical": {
+        "title": "Physical clock",
+        "description": "Optionally mirror this clock on a real one built from the Weasley Clock ESPHome firmware. Each person's hand is chosen when you edit that person.\n\n**Calibrating:** tick *Pause*, save, press the device's *Home All Clock Hands* button, then adjust each *Hand N Position (Steps)* on the device until that hand points at the middle of position 1. Enter those numbers as the offsets below and untick *Pause*.",
+        "data": {
+          "device_id": "ESPHome clock device (leave empty for no physical clock)",
+          "steps_per_rev": "Steps for one full turn of a hand",
+          "reverse": "Positive steps turn the hands anticlockwise",
+          "paused": "Pause (don't move the hands, e.g. while calibrating)",
+          "hand_1_offset": "Hand 1: steps from home to position 1",
+          "hand_2_offset": "Hand 2: steps from home to position 1",
+          "hand_3_offset": "Hand 3: steps from home to position 1",
+          "hand_4_offset": "Hand 4: steps from home to position 1",
+          "hand_5_offset": "Hand 5: steps from home to position 1",
+          "hand_6_offset": "Hand 6: steps from home to position 1",
+          "hand_7_offset": "Hand 7: steps from home to position 1",
+          "hand_8_offset": "Hand 8: steps from home to position 1"
         }
       },
       "settings": {
@@ -69,7 +88,8 @@
         "data": {
           "entity_id": "Person or device tracker",
           "name": "Name on the hand (leave blank to use the entity name)",
-          "color": "Hand colour"
+          "color": "Hand colour",
+          "hand": "Hand on the physical clock"
         }
       },
       "pick_person": {
@@ -82,13 +102,16 @@
           "entity_id": "Person or device tracker",
           "name": "Name on the hand (leave blank to use the entity name)",
           "color": "Hand colour",
+          "hand": "Hand on the physical clock",
           "delete": "Remove this person"
         }
       }
     },
     "error": {
       "name_required": "A label is required.",
-      "duplicate_location": "There is already a position with that label."
+      "duplicate_location": "There is already a position with that label.",
+      "not_a_clock": "That device has no 'Hand N Position (Steps)' number entities, so it doesn't look like a Weasley Clock.",
+      "hand_taken": "Another person already uses that hand."
     }
   }
 }
