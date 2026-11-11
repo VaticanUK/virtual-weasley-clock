@@ -81,8 +81,13 @@ class ClockRuntime:
             names.add(zone.name.strip().casefold())
         return names
 
-    def resolve(self, person_id: str, raw_state: str | None) -> tuple[int | None, bool]:
-        """Return (location index, overridden) for a person."""
+    def resolve(
+        self, person_id: str, raw_state: str | None, planned: str | None = None
+    ) -> tuple[int | None, bool]:
+        """Return (location index, overridden) for a person.
+
+        ``planned`` is the id of a location named by a calendar event happening now.
+        """
         locations = self.locations
 
         override = self.overrides.get(person_id)
@@ -90,6 +95,11 @@ class ClockRuntime:
             for idx, loc in enumerate(locations):
                 if loc[LOC_ID] == override:
                     return idx, True
+
+        if planned:
+            for idx, loc in enumerate(locations):
+                if loc[LOC_ID] == planned:
+                    return idx, False
 
         state = (raw_state or STATE_UNKNOWN).strip().casefold()
 

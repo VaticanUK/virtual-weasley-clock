@@ -68,7 +68,9 @@
       },
       "pick_location": {
         "title": "Choose a position",
-        "data": { "target": "Position" }
+        "data": {
+          "target": "Position"
+        }
       },
       "edit_location": {
         "title": "Edit {name}",
@@ -89,12 +91,18 @@
           "entity_id": "Person or device tracker",
           "name": "Name on the hand (leave blank to use the entity name)",
           "color": "Hand colour",
+          "calendar": "Calendar for planned positions",
           "hand": "Hand on the physical clock"
+        },
+        "data_description": {
+          "calendar": "Optional. While an event in this calendar is happening and its title is the name of a position (e.g. Hospital), the hand goes to that position until the event ends. Manual overrides still win."
         }
       },
       "pick_person": {
         "title": "Choose a person",
-        "data": { "target": "Person" }
+        "data": {
+          "target": "Person"
+        }
       },
       "edit_person": {
         "title": "Edit {name}",
@@ -102,8 +110,12 @@
           "entity_id": "Person or device tracker",
           "name": "Name on the hand (leave blank to use the entity name)",
           "color": "Hand colour",
+          "calendar": "Calendar for planned positions",
           "hand": "Hand on the physical clock",
           "delete": "Remove this person"
+        },
+        "data_description": {
+          "calendar": "Optional. While an event in this calendar is happening and its title is the name of a position (e.g. Hospital), the hand goes to that position until the event ends. Manual overrides still win."
         }
       }
     },

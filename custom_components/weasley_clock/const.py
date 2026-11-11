@@ -29,6 +29,7 @@ PERSON_NAME: Final = "name"
 PERSON_COLOR: Final = "color"
 
 PERSON_HAND: Final = "hand"  # physical hand number (1-based), 0 = none
+PERSON_CALENDAR: Final = "calendar"  # calendar entity whose events plan positions, "" = none
 
 OVERRIDE_AUTO: Final = "Auto"
 

@@ -35,22 +35,23 @@ Open **Configure** on the integration to:
 | --- | --- |
 | Add a position | Label, zones, extra states, flags and where it sits on the dial (1 = 12 o'clock, then clockwise). |
 | Edit, move or remove a position | Change any of the above, or delete the position. |
-| Add a person / Edit or remove a person | Choose the entity, the name on the hand and the hand colour. |
+| Add a person / Edit or remove a person | Choose the entity, the name on the hand, the hand colour and an optional calendar for planned positions. |
 | Display settings | Centre text. |
 | Save and close | Applies your changes. |
 
 ### How a hand chooses its position
 
 1. **Override**: if `select.<clock>_<person>_override` isn't `Auto`, the hand goes there.
-2. **Zone / state match**: the person's state matches one of the position's zones (e.g. `zone.home` → `home`, `zone.work` → `Work`), or one of the extra states you listed.
-3. **Away**: the person is `not_home`, or is in a zone that doesn't have a position, so the hand goes to the position flagged *"Use when away"* (e.g. Travelling).
-4. **Unknown**: the person's state is unknown or unavailable, so the hand goes to the position flagged *"Use when unknown"* (e.g. Lost). If no position has that flag, the hand points to 12 o'clock, greyed out.
+2. **Planned**: if the person has a calendar and an event is happening now whose title is the name of a position (e.g. *Hospital*, ignoring case), the hand goes there until the event ends. If events overlap, the one that started most recently wins.
+3. **Zone / state match**: the person's state matches one of the position's zones (e.g. `zone.home` → `home`, `zone.work` → `Work`), or one of the extra states you listed.
+4. **Away**: the person is `not_home`, or is in a zone that doesn't have a position, so the hand goes to the position flagged *"Use when away"* (e.g. Travelling).
+5. **Unknown**: the person's state is unknown or unavailable, so the hand goes to the position flagged *"Use when unknown"* (e.g. Lost). If no position has that flag, the hand points to 12 o'clock, greyed out.
 
 ## Entities
 
 For each person on each clock:
 
-* `sensor.<clock>_<person>` is the current position (an enum sensor). Its attributes include `location_index`, `source_state` and `overridden`.
+* `sensor.<clock>_<person>` is the current position (an enum sensor). Its attributes include `location_index`, `source_state`, `overridden`, `planned` and `planned_event`.
 * `select.<clock>_<person>_override` is `Auto` or any position.
 
 ## The card

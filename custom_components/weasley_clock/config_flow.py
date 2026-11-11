@@ -22,6 +22,7 @@ from .const import (
     DEFAULT_LOCATIONS,
     DEFAULT_STEPS_PER_REV,
     DOMAIN,
+    PERSON_CALENDAR,
     PERSON_HAND,
     PHYS_DEVICE,
     PHYS_OFFSETS,
@@ -341,6 +342,10 @@ class WeasleyClockOptionsFlow(OptionsFlow):
         fields[vol.Optional(PERSON_NAME, default=person.get(PERSON_NAME, ""))] = str
         color = person.get(PERSON_COLOR) or DEFAULT_COLORS[len(self.opts[CONF_PEOPLE]) % len(DEFAULT_COLORS)]
         fields[vol.Required(PERSON_COLOR, default=_hex_to_rgb(color))] = selector.ColorRGBSelector()
+        # suggested_value rather than default, so the calendar can be cleared again.
+        fields[
+            vol.Optional(PERSON_CALENDAR, description={"suggested_value": person.get(PERSON_CALENDAR) or None})
+        ] = selector.EntitySelector(selector.EntitySelectorConfig(domain="calendar"))
         if self.physical.get(PHYS_DEVICE):
             hand_options = [selector.SelectOptionDict(value="0", label="None")] + [
                 selector.SelectOptionDict(value=str(h), label=f"Hand {h}")
@@ -358,6 +363,7 @@ class WeasleyClockOptionsFlow(OptionsFlow):
         built = _make_person(self.hass, entity_id, 0, user_input.get(PERSON_NAME, "").strip() or None)
         built[PERSON_ID] = person_id
         built[PERSON_COLOR] = _rgb_to_hex(user_input.get(PERSON_COLOR, [139, 26, 26]))
+        built[PERSON_CALENDAR] = user_input.get(PERSON_CALENDAR) or ""
         people = self.opts[CONF_PEOPLE]
         existing = next((p for p in people if p[PERSON_ID] == person_id), {})
         built[PERSON_HAND] = int(user_input.get(PERSON_HAND, existing.get(PERSON_HAND) or 0))

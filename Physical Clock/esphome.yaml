@@ -30,191 +30,451 @@ wifi:
     password: !secret hotspot_password
 
 captive_portal:
+# --- TIME SYNC FOR MIDNIGHT RECALIBRATION ---
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    on_time:
+      # Runs every night at 00:00:00 (Midnight)
+      - seconds: 0
+        minutes: 0
+        hours: 0
+        then:
+          - logger.log: "Midnight reached: Starting nightly drift recalibration..."
+          - script.execute: recalibrate_all_hands
 
-# --- TEMPORARY DIAGNOSTIC SWITCHES ---
-#switch:
-#  - platform: gpio
-#    pin: GPIO23
-#    id: test_pin_1
-#    name: "Test LED 1 (IN1)"
-#  - platform: gpio
-#    pin: GPIO22
-#    id: test_pin_2
-#    name: "Test LED 2 (IN2)"
-#  - platform: gpio
-#    pin: GPIO21
-#    id: test_pin_3
-#    name: "Test LED 3 (IN3)"
-#  - platform: gpio
-#    pin: GPIO19
-#    id: test_pin_4
-#    name: "Test LED 4 (IN4)"
-  
 # --- STEPPER MOTORS CONFIGURATION (ULN2003) ---
 stepper:
- - platform: uln2003
-   id: hand_1_stepper
-   pin_a: GPIO18 # Connected to IN1 (D18) - 4 adjacent pins on the board!
-   pin_b: GPIO5 # Connected to IN3 (D17 - swapped in YAML)
-   pin_c: GPIO17  # Connected to IN2 (D5  - swapped in YAML)
-   pin_d: GPIO16 # Connected to IN4 (D16)
-   max_speed: 600 steps/s
-   sleep_when_done: true
+  - platform: uln2003
+    id: hand_1_stepper
+    pin_a: GPIO18 # Connected to IN1 (D18) - 4 adjacent pins on the board!
+    pin_b: GPIO5  # Connected to IN3 (D17 - swapped in YAML)
+    pin_c: GPIO17 # Connected to IN2 (D5  - swapped in YAML)
+    pin_d: GPIO16 # Connected to IN4 (D16)
+    max_speed: 900 steps/s
+    sleep_when_done: true
 
- - platform: uln2003
-   id: hand_2_stepper
-   pin_a: GPIO23
-   pin_b: GPIO22
-   pin_c: GPIO21
-   pin_d: GPIO19
-   max_speed: 600 steps/s
-   sleep_when_done: true
+  - platform: uln2003
+    id: hand_2_stepper
+    pin_a: GPIO23
+    pin_b: GPIO22
+    pin_c: GPIO21
+    pin_d: GPIO19
+    max_speed: 900 steps/s
+    sleep_when_done: true
 
- - platform: uln2003
-   id: hand_3_stepper
-   pin_a: GPIO13 # Connected to IN1 (D13)
-   pin_b: GPIO12 # Connected to IN3 (D14 - swapped in YAML)
-   pin_c: GPIO14 # Connected to IN2 (D12 - swapped in YAML)
-   pin_d: GPIO27 # Connected to IN4 (D27)
-   max_speed: 600 steps/s
-   sleep_when_done: true
+  - platform: uln2003
+    id: hand_3_stepper
+    pin_a: GPIO13 # Connected to IN1 (D13)
+    pin_b: GPIO12 # Connected to IN3 (D14 - swapped in YAML)
+    pin_c: GPIO14 # Connected to IN2 (D12 - swapped in YAML)
+    pin_d: GPIO27 # Connected to IN4 (D27)
+    max_speed: 900 steps/s
+    sleep_when_done: true
 
- - platform: uln2003
-   id: hand_4_stepper
-   pin_a: GPIO4  # Connected to IN1 (D4)
-   pin_b: GPIO2 # Connected to IN3 (D15 - swapped in YAML)
-   pin_c: GPIO15  # Connected to IN2 (D2  - swapped in YAML)
-   pin_d: GPIO26 # Connected to IN4 (D26)
-   max_speed: 600 steps/s
-   sleep_when_done: true
+  - platform: uln2003
+    id: hand_4_stepper
+    pin_a: GPIO4  # Connected to IN1 (D4)
+    pin_b: GPIO2  # Connected to IN3 (D15 - swapped in YAML)
+    pin_c: GPIO15 # Connected to IN2 (D2  - swapped in YAML)
+    pin_d: GPIO26 # Connected to IN4 (D26)
+    max_speed: 900 steps/s
+    sleep_when_done: true
 
-#--- HOMING SCRIPTS ---
+# --- GLOBAL VARIABLES FOR SAVING POSITIONS DURING RECALIBRATION ---
+globals:
+  - id: saved_pos_1
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: saved_pos_2
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: saved_pos_3
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: saved_pos_4
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+# --- HOMING & PRECISE MOVEMENT SCRIPTS ---
 script:
   - id: home_all_hands
-    mode: queued
+    mode: restart
     then:
       - logger.log: "Starting Weasley Clock Homing Routine..."
-      # Move all 4 steppers forward by 7,000 steps (slightly more than 1 full 6,144 step rotation)
       - script.execute: home_motor_1
       - script.execute: home_motor_2
       - script.execute: home_motor_3
       - script.execute: home_motor_4
 
-  - id: home_motor_1
-    mode: parallel
+  - id: recalibrate_all_hands
+    mode: restart
     then:
-      - logger.log: "Homing hand 1..."
+      - logger.log: "Saving current hand positions before homing..."
+      - lambda: |-
+          id(saved_pos_1) = (int)round(id(hand_1_pos).state);
+          id(saved_pos_2) = (int)round(id(hand_2_pos).state);
+          id(saved_pos_3) = (int)round(id(hand_3_pos).state);
+          id(saved_pos_4) = (int)round(id(hand_4_pos).state);
+          ESP_LOGI("weasley", "Saved targets -> H1: %d, H2: %d, H3: %d, H4: %d",
+                   id(saved_pos_1), id(saved_pos_2), id(saved_pos_3), id(saved_pos_4));
+
+      # 1. Start homing on all active motors
+      - script.execute: home_motor_1
+      - script.execute: home_motor_2
+      - script.execute: home_motor_3
+      - script.execute: home_motor_4
+
+      # 2. Wait until all homing scripts have completely finished zeroing
+      - script.wait: home_motor_1
+      - script.wait: home_motor_2
+      - script.wait: home_motor_3
+      - script.wait: home_motor_4
+      - delay: 500ms
+
+      # 3. Restore each hand to its saved target position
+      - logger.log: "Homing complete. Returning hands to saved positions..."
+      - lambda: |-
+          id(hand_1_pos).publish_state(id(saved_pos_1));
+          id(hand_2_pos).publish_state(id(saved_pos_2));
+          id(hand_3_pos).publish_state(id(saved_pos_3));
+          id(hand_4_pos).publish_state(id(saved_pos_4));
+      - script.execute:
+          id: move_hand_1_precise
+          target_step: !lambda "return id(saved_pos_1);"
+      - script.execute:
+          id: move_hand_2_precise
+          target_step: !lambda "return id(saved_pos_2);"
+      - script.execute:
+          id: move_hand_3_precise
+          target_step: !lambda "return id(saved_pos_3);"
+      - script.execute:
+          id: move_hand_4_precise
+          target_step: !lambda "return id(saved_pos_4);"
+
+  - id: home_motor_1
+    mode: restart
+    then:
+      - logger.log: "Homing hand 1 with backlash correction..."
       - stepper.set_speed:
           id: hand_1_stepper
           speed: 150 steps/s
+      # If already sitting on the magnet, back off 250 steps first
+      - if:
+          condition:
+            binary_sensor.is_on: home_sensor_1
+          then:
+            - stepper.set_target:
+                id: hand_1_stepper
+                target: !lambda "return id(hand_1_stepper).current_position - 250;"
+            - wait_until:
+                lambda: "return id(hand_1_stepper).current_position == id(hand_1_stepper).target_position;"
+      # Sweep clockwise until sensor triggers
       - stepper.set_target:
           id: hand_1_stepper
           target: !lambda "return id(hand_1_stepper).current_position + 7000;"
       - wait_until:
           binary_sensor.is_on: home_sensor_1
+      # 1. Stop immediately when sensor triggers
       - stepper.set_target:
           id: hand_1_stepper
           target: !lambda "return id(hand_1_stepper).current_position;"
-      - lambda: "id(hand_1_stepper).current_position = 0;"
-      - number.set:
-          id: hand_1_pos
-          value: 0
+      # 2. Overshoot backward (counter-clockwise) by 200 steps to clear the sensor
+      - stepper.set_target:
+          id: hand_1_stepper
+          target: !lambda "return id(hand_1_stepper).current_position - 200;"
+      - wait_until:
+          lambda: "return id(hand_1_stepper).current_position == id(hand_1_stepper).target_position;"
+      # 3. Approach home final time in the CLOCKWISE direction to eliminate gear slack
+      - stepper.set_target:
+          id: hand_1_stepper
+          target: !lambda "return id(hand_1_stepper).current_position + 400;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_1
+      - stepper.set_target:
+          id: hand_1_stepper
+          target: !lambda "return id(hand_1_stepper).current_position;"
+      # 4. Reset internal position to 0 and update HA UI without triggering set_action
+      - lambda: |-
+          id(hand_1_stepper).report_position(0);
+          id(hand_1_stepper).set_target(0);
+          id(hand_1_pos).publish_state(0);
       - logger.log: "Hand 1 homed successfully!"
       - stepper.set_speed:
           id: hand_1_stepper
-          speed: 600 steps/s
-        
+          speed: 300 steps/s
+
   - id: home_motor_2
-    mode: parallel
+    mode: restart
     then:
-      - logger.log: "Homing hand 2..."
+      - logger.log: "Homing hand 2 with backlash correction..."
       - stepper.set_speed:
           id: hand_2_stepper
           speed: 150 steps/s
+      # If already sitting on the magnet, back off 250 steps first
+      - if:
+          condition:
+            binary_sensor.is_on: home_sensor_2
+          then:
+            - stepper.set_target:
+                id: hand_2_stepper
+                target: !lambda "return id(hand_2_stepper).current_position - 250;"
+            - wait_until:
+                lambda: "return id(hand_2_stepper).current_position == id(hand_2_stepper).target_position;"
+      # Sweep clockwise until sensor triggers
       - stepper.set_target:
           id: hand_2_stepper
           target: !lambda "return id(hand_2_stepper).current_position + 7000;"
       - wait_until:
           binary_sensor.is_on: home_sensor_2
+      # 1. Stop immediately when sensor triggers
       - stepper.set_target:
           id: hand_2_stepper
           target: !lambda "return id(hand_2_stepper).current_position;"
-      - lambda: "id(hand_2_stepper).current_position = 0;"
-      - number.set:
-          id: hand_2_pos
-          value: 0
+      # 2. Overshoot backward (counter-clockwise) by 200 steps to clear the sensor
+      - stepper.set_target:
+          id: hand_2_stepper
+          target: !lambda "return id(hand_2_stepper).current_position - 200;"
+      - wait_until:
+          lambda: "return id(hand_2_stepper).current_position == id(hand_2_stepper).target_position;"
+      # 3. Approach home final time in the CLOCKWISE direction to eliminate gear slack
+      - stepper.set_target:
+          id: hand_2_stepper
+          target: !lambda "return id(hand_2_stepper).current_position + 400;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_2
+      - stepper.set_target:
+          id: hand_2_stepper
+          target: !lambda "return id(hand_2_stepper).current_position;"
+      # 4. Reset internal position to 0 and update HA UI without triggering set_action
+      - lambda: |-
+          id(hand_2_stepper).report_position(0);
+          id(hand_2_stepper).set_target(0);
+          id(hand_2_pos).publish_state(0);
       - logger.log: "Hand 2 homed successfully!"
       - stepper.set_speed:
           id: hand_2_stepper
-          speed: 600 steps/s
+          speed: 300 steps/s
 
   - id: home_motor_3
-    mode: parallel
+    mode: restart
     then:
-      - logger.log: "Homing hand 3..."
+      - logger.log: "Homing hand 3 with backlash correction..."
       - stepper.set_speed:
           id: hand_3_stepper
           speed: 150 steps/s
+      # If already sitting on the magnet, back off 250 steps first
+      - if:
+          condition:
+            binary_sensor.is_on: home_sensor_3
+          then:
+            - stepper.set_target:
+                id: hand_3_stepper
+                target: !lambda "return id(hand_3_stepper).current_position - 250;"
+            - wait_until:
+                lambda: "return id(hand_3_stepper).current_position == id(hand_3_stepper).target_position;"
+      # Sweep clockwise until sensor triggers
       - stepper.set_target:
           id: hand_3_stepper
           target: !lambda "return id(hand_3_stepper).current_position + 7000;"
       - wait_until:
           binary_sensor.is_on: home_sensor_3
+      # 1. Stop immediately when sensor triggers
       - stepper.set_target:
           id: hand_3_stepper
           target: !lambda "return id(hand_3_stepper).current_position;"
-      - lambda: "id(hand_3_stepper).current_position = 0;"
-      - number.set:
-          id: hand_3_pos
-          value: 0
+      # 2. Overshoot backward (counter-clockwise) by 200 steps to clear the sensor
+      - stepper.set_target:
+          id: hand_3_stepper
+          target: !lambda "return id(hand_3_stepper).current_position - 200;"
+      - wait_until:
+          lambda: "return id(hand_3_stepper).current_position == id(hand_3_stepper).target_position;"
+      # 3. Approach home final time in the CLOCKWISE direction to eliminate gear slack
+      - stepper.set_target:
+          id: hand_3_stepper
+          target: !lambda "return id(hand_3_stepper).current_position + 400;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_3
+      - stepper.set_target:
+          id: hand_3_stepper
+          target: !lambda "return id(hand_3_stepper).current_position;"
+      # 4. Reset internal position to 0 and update HA UI without triggering set_action
+      - lambda: |-
+          id(hand_3_stepper).report_position(0);
+          id(hand_3_stepper).set_target(0);
+          id(hand_3_pos).publish_state(0);
       - logger.log: "Hand 3 homed successfully!"
       - stepper.set_speed:
           id: hand_3_stepper
-          speed: 600 steps/s
+          speed: 300 steps/s
 
   - id: home_motor_4
-    mode: parallel
+    mode: restart
     then:
-      - logger.log: "Homing hand 4..."
+      - logger.log: "Homing hand 4 with backlash correction..."
       - stepper.set_speed:
           id: hand_4_stepper
           speed: 150 steps/s
+      # If already sitting on the magnet, back off 250 steps first
+      - if:
+          condition:
+            binary_sensor.is_on: home_sensor_4
+          then:
+            - stepper.set_target:
+                id: hand_4_stepper
+                target: !lambda "return id(hand_4_stepper).current_position - 250;"
+            - wait_until:
+                lambda: "return id(hand_4_stepper).current_position == id(hand_4_stepper).target_position;"
+      # Sweep clockwise until sensor triggers
       - stepper.set_target:
           id: hand_4_stepper
           target: !lambda "return id(hand_4_stepper).current_position + 7000;"
       - wait_until:
           binary_sensor.is_on: home_sensor_4
+      # 1. Stop immediately when sensor triggers
       - stepper.set_target:
           id: hand_4_stepper
           target: !lambda "return id(hand_4_stepper).current_position;"
-      - lambda: "id(hand_4_stepper).current_position = 0;"
-      - number.set:
-          id: hand_4_pos
-          value: 0
+      # 2. Overshoot backward (counter-clockwise) by 200 steps to clear the sensor
+      - stepper.set_target:
+          id: hand_4_stepper
+          target: !lambda "return id(hand_4_stepper).current_position - 200;"
+      - wait_until:
+          lambda: "return id(hand_4_stepper).current_position == id(hand_4_stepper).target_position;"
+      # 3. Approach home final time in the CLOCKWISE direction to eliminate gear slack
+      - stepper.set_target:
+          id: hand_4_stepper
+          target: !lambda "return id(hand_4_stepper).current_position + 400;"
+      - wait_until:
+          binary_sensor.is_on: home_sensor_4
+      - stepper.set_target:
+          id: hand_4_stepper
+          target: !lambda "return id(hand_4_stepper).current_position;"
+      # 4. Reset internal position to 0 and update HA UI without triggering set_action
+      - lambda: |-
+          id(hand_4_stepper).report_position(0);
+          id(hand_4_stepper).set_target(0);
+          id(hand_4_pos).publish_state(0);
       - logger.log: "Hand 4 homed successfully!"
       - stepper.set_speed:
           id: hand_4_stepper
-          speed: 600 steps/s
-          
+          speed: 300 steps/s
+
+  # --- UNI-DIRECTIONAL (BACKLASH-FREE) MOVEMENT SCRIPTS ---
+  - id: move_hand_1_precise
+    mode: restart
+    parameters:
+      target_step: int
+    then:
+      - if:
+          condition:
+            lambda: "return target_step < id(hand_1_stepper).current_position;"
+          then:
+            - logger.log:
+                format: "Hand 1 moving CCW: overshooting to %d first to remove backlash"
+                args: ["target_step - 200"]
+            - stepper.set_target:
+                id: hand_1_stepper
+                target: !lambda "return target_step - 200;"
+            - wait_until:
+                lambda: "return id(hand_1_stepper).current_position == id(hand_1_stepper).target_position;"
+            - delay: 150ms
+      - logger.log:
+          format: "Hand 1 final clockwise move to %d"
+          args: ["target_step"]
+      - stepper.set_target:
+          id: hand_1_stepper
+          target: !lambda "return target_step;"
+
+  - id: move_hand_2_precise
+    mode: restart
+    parameters:
+      target_step: int
+    then:
+      - if:
+          condition:
+            lambda: "return target_step < id(hand_2_stepper).current_position;"
+          then:
+            - logger.log:
+                format: "Hand 2 moving CCW: overshooting to %d first to remove backlash"
+                args: ["target_step - 200"]
+            - stepper.set_target:
+                id: hand_2_stepper
+                target: !lambda "return target_step - 200;"
+            - wait_until:
+                lambda: "return id(hand_2_stepper).current_position == id(hand_2_stepper).target_position;"
+            - delay: 150ms
+      - logger.log:
+          format: "Hand 2 final clockwise move to %d"
+          args: ["target_step"]
+      - stepper.set_target:
+          id: hand_2_stepper
+          target: !lambda "return target_step;"
+
+  - id: move_hand_3_precise
+    mode: restart
+    parameters:
+      target_step: int
+    then:
+      - if:
+          condition:
+            lambda: "return target_step < id(hand_3_stepper).current_position;"
+          then:
+            - logger.log:
+                format: "Hand 3 moving CCW: overshooting to %d first to remove backlash"
+                args: ["target_step - 200"]
+            - stepper.set_target:
+                id: hand_3_stepper
+                target: !lambda "return target_step - 200;"
+            - wait_until:
+                lambda: "return id(hand_3_stepper).current_position == id(hand_3_stepper).target_position;"
+            - delay: 150ms
+      - logger.log:
+          format: "Hand 3 final clockwise move to %d"
+          args: ["target_step"]
+      - stepper.set_target:
+          id: hand_3_stepper
+          target: !lambda "return target_step;"
+
+  - id: move_hand_4_precise
+    mode: restart
+    parameters:
+      target_step: int
+    then:
+      - if:
+          condition:
+            lambda: "return target_step < id(hand_4_stepper).current_position;"
+          then:
+            - logger.log:
+                format: "Hand 4 moving CCW: overshooting to %d first to remove backlash"
+                args: ["target_step - 200"]
+            - stepper.set_target:
+                id: hand_4_stepper
+                target: !lambda "return target_step - 200;"
+            - wait_until:
+                lambda: "return id(hand_4_stepper).current_position == id(hand_4_stepper).target_position;"
+            - delay: 150ms
+      - logger.log:
+          format: "Hand 4 final clockwise move to %d"
+          args: ["target_step"]
+      - stepper.set_target:
+          id: hand_4_stepper
+          target: !lambda "return target_step;"
+
 # --- HOMING / POSITION SENSORS (HALL EFFECT) ---
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO34
+      number: GPIO33
       inverted: true
+      mode: INPUT_PULLUP
     id: home_sensor_2
     name: Home Sensor 2
     icon: "mdi:clock-in"
-#    internal: true
-#    on_press:
-#      then:
-#        - logger.log: "Hand 1 home position found"
-#        - stepper.report_position:
-#            id: hand_1_stepper
-#            position: 0
-#        - stepper.set_target:
-#            id: hand_1_stepper
-#            target: 0
 
   - platform: gpio
     pin:
@@ -223,16 +483,6 @@ binary_sensor:
     id: home_sensor_3
     name: Home Sensor 3
     icon: "mdi:clock-in"
-    internal: true
-    on_press:
-      then:
-        - logger.log: "Hand 3 home position found"
-        - stepper.report_position:
-            id: hand_3_stepper
-            position: 0
-        - stepper.set_target:
-            id: hand_3_stepper
-            target: 0
 
   - platform: gpio
     pin:
@@ -242,35 +492,14 @@ binary_sensor:
     id: home_sensor_1
     name: Home Sensor 1
     icon: "mdi:clock-in"
-    internal: true
-    on_press:
-      then:
-        - logger.log: "Hand 1 home position found"
-        - stepper.report_position:
-            id: hand_1_stepper
-            position: 0
-        - stepper.set_target:
-            id: hand_1_stepper
-            target: 0
 
   - platform: gpio
     pin:
-      number: GPIO33
+      number: GPIO34
       inverted: true
-      mode: INPUT_PULLUP
     id: home_sensor_4
     name: Home Sensor 4
     icon: "mdi:clock-in"
-#    internal: true
-#    on_press:
-#      then:
-#        - logger.log: "Hand 4 home position found"
-#        - stepper.report_position:
-#            id: hand_4_stepper
-#            position: 0
-#        - stepper.set_target:
-#            id: hand_4_stepper
-#            target: 0
 
 # --- HOME ASSISTANT BUTTONS ---
 button:
@@ -281,31 +510,39 @@ button:
     on_press:
       then:
         - script.execute: home_all_hands
-  
+
+  - platform: template
+    name: "Recalibrate All Hands (Keep Positions)"
+    id: button_recalibrate_clock
+    icon: "mdi:clock-check-outline"
+    on_press:
+      then:
+        - script.execute: recalibrate_all_hands
+
   - platform: template
     name: "Home Motor 1"
     on_press:
       then:
-          - script.execute: home_motor_1
+        - script.execute: home_motor_1
 
   - platform: template
     name: "Home Motor 2"
     on_press:
       then:
-          - script.execute: home_motor_2
+        - script.execute: home_motor_2
 
   - platform: template
     name: "Home Motor 3"
     on_press:
       then:
-          - script.execute: home_motor_3
+        - script.execute: home_motor_3
 
   - platform: template
     name: "Home Motor 4"
     on_press:
       then:
-          - script.execute: home_motor_4
-            
+        - script.execute: home_motor_4
+
 # --- HOME ASSISTANT INTERFACE CONTROLS ---
 number:
   - platform: template
@@ -320,11 +557,11 @@ number:
         - logger.log:
             format: "Moving hand 1 to %.0f steps"
             args: [x]
-        - stepper.set_target:
-            id: hand_1_stepper
-            target: !lambda 'return x;'
+        - script.execute:
+            id: move_hand_1_precise
+            target_step: !lambda "return (int)round(x);"
     icon: "mdi:clock-in"
-     
+
   - platform: template
     name: "Hand 2 Position (Steps)"
     id: hand_2_pos
@@ -337,9 +574,9 @@ number:
         - logger.log:
             format: "Moving hand 2 to %.0f steps"
             args: [x]
-        - stepper.set_target:
-            id: hand_2_stepper
-            target: !lambda 'return x;'
+        - script.execute:
+            id: move_hand_2_precise
+            target_step: !lambda "return (int)round(x);"
     icon: "mdi:clock-in"
 
   - platform: template
@@ -354,9 +591,9 @@ number:
         - logger.log:
             format: "Moving hand 3 to %.0f steps"
             args: [x]
-        - stepper.set_target:
-            id: hand_3_stepper
-            target: !lambda 'return x;'
+        - script.execute:
+            id: move_hand_3_precise
+            target_step: !lambda "return (int)round(x);"
     icon: "mdi:clock-in"
 
   - platform: template
@@ -371,7 +608,7 @@ number:
         - logger.log:
             format: "Moving hand 4 to %.0f steps"
             args: [x]
-        - stepper.set_target:
-            id: hand_4_stepper
-            target: !lambda 'return x;'
+        - script.execute:
+            id: move_hand_4_precise
+            target_step: !lambda "return (int)round(x);"
     icon: "mdi:clock-in"

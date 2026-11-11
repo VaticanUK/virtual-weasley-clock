@@ -1,7 +1,7 @@
 {
   "domain": "weasley_clock",
   "name": "Weasley Clock",
-  "after_dependencies": ["esphome"],
+  "after_dependencies": ["calendar", "esphome"],
   "codeowners": ["@VaticanUK"],
   "config_flow": true,
   "dependencies": ["frontend", "http", "zone"],
